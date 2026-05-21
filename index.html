@@ -3,944 +3,849 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>お金日記 - Money Diary</title>
-    <!-- Supabase クライアントライブラリ -->
+    <title>お金日記</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --ink:    #2F2F3D;
+            --sage:   #7A9E95;
+            --paper:  #F6F3EE;
+            --surface:#FFFFFF;
+            --border: #E4E0D6;
+            --muted:  #9797A8;
+            --rust:   #C07A70;
+            --sage-light: #EBF3F1;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', -apple-system, sans-serif;
+            background: var(--paper);
             height: 100vh;
             overflow: hidden;
         }
 
-        .app-container {
-            max-width: 400px;
+        .app {
+            max-width: 390px;
             margin: 0 auto;
             height: 100vh;
-            background: white;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            background: var(--surface);
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        /* ヘッダー */
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .logout-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        /* メインコンテンツ */
-        .main-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0;
-        }
-
-        .screen {
+        /* ========== ログイン画面 ========== */
+        #loginScreen {
             display: none;
-            height: 100%;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .screen.active {
-            display: block;
-        }
-
-        /* ログイン画面 */
-        .login-screen {
-            display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center;
-            padding: 40px 20px;
+            height: 100vh;
+            padding: 40px 32px;
+        }
+        #loginScreen.active { display: flex; }
+
+        .login-logo {
+            width: 52px;
+            height: 52px;
+            background: var(--ink);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 22px;
         }
 
         .login-title {
-            font-size: 32px;
-            margin-bottom: 10px;
-            color: #333;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
         }
 
-        .login-subtitle {
-            color: #666;
+        .login-sub {
+            font-size: 13px;
+            color: var(--muted);
             margin-bottom: 40px;
+            letter-spacing: 0.02em;
         }
 
-        .login-form {
-            width: 100%;
-            max-width: 300px;
-        }
+        .login-form { width: 100%; }
 
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
+        .field { margin-bottom: 16px; }
 
-        .form-group label {
+        .field label {
             display: block;
-            margin-bottom: 5px;
-            color: #333;
-            font-weight: 500;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 7px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
-        .form-group input {
+        .field input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
             border-radius: 8px;
-            font-size: 16px;
-        }
-
-        .form-group input:focus {
+            font-size: 15px;
+            color: var(--ink);
+            background: var(--paper);
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            font-family: inherit;
+            transition: border-color 0.15s;
         }
+        .field input:focus { border-color: var(--sage); }
 
-        .login-btn, .register-btn {
+        .btn-primary {
             width: 100%;
-            padding: 14px;
+            padding: 13px;
+            background: var(--ink);
+            color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             margin-bottom: 10px;
+            font-family: inherit;
+            letter-spacing: 0.04em;
+            transition: opacity 0.15s;
         }
+        .btn-primary:hover { opacity: 0.85; }
 
-        .login-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .register-btn {
-            background: white;
-            color: #667eea;
-            border: 1px solid #667eea;
-        }
-
-        /* 投稿画面 */
-        .weather-display {
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: white;
-            padding: 15px;
-            margin: -20px -20px 20px -20px;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        .post-form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .form-section {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .form-section label {
-            font-weight: 500;
-            color: #333;
-        }
-
-        .content-input {
+        .btn-outline {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
+            padding: 13px;
+            background: transparent;
+            color: var(--ink);
+            border: 1px solid var(--border);
             border-radius: 8px;
-            font-size: 16px;
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .amount-section {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        .amount-input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-
-        .helper-btn {
-            background: #f0f0f0;
-            border: 1px solid #ddd;
-            padding: 12px;
-            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
             cursor: pointer;
-            font-size: 18px;
-            min-width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-family: inherit;
+            letter-spacing: 0.04em;
+            transition: border-color 0.15s;
         }
+        .btn-outline:hover { border-color: var(--ink); }
 
-        .helper-btn:hover {
-            background: #e0e0e0;
+        .demo-link {
+            margin-top: 32px;
+            text-align: center;
         }
-
-        .category-select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            background: white;
-        }
-
-        .submit-btn {
-            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
-            color: white;
+        .demo-link button {
+            background: none;
             border: none;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            color: var(--muted);
+            font-size: 12px;
             cursor: pointer;
-            margin-top: 10px;
+            font-family: inherit;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            letter-spacing: 0.02em;
         }
 
-        .submit-btn:hover {
-            opacity: 0.9;
-        }
-
-        /* 一覧画面 */
-        .list-header {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .entry-list {
-            display: flex;
+        /* ========== メインアプリ ========== */
+        #mainApp {
+            display: none;
             flex-direction: column;
-            gap: 15px;
+            height: 100vh;
         }
+        #mainApp.active { display: flex; }
 
-        .entry-item {
-            background: white;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .entry-date {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 5px;
-        }
-
-        .entry-content {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 8px;
-            line-height: 1.4;
-        }
-
-        .entry-details {
+        .header {
+            padding: 14px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
-        .entry-amount {
-            color: #e74c3c;
+        .header-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: 0.06em;
+        }
+
+        .btn-logout {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+            letter-spacing: 0.03em;
+        }
+        .btn-logout:hover { border-color: var(--ink); color: var(--ink); }
+
+        /* スクロールエリア */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 72px;
+        }
+
+        .screen { display: none; padding: 20px; }
+        .screen.active { display: block; }
+
+        /* ========== 投稿画面 ========== */
+        .weather-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--paper);
+            border-radius: 10px;
+            margin-bottom: 24px;
+            color: var(--sage);
+        }
+
+        .weather-text {
+            font-size: 13px;
+            color: var(--muted);
+            letter-spacing: 0.02em;
+        }
+
+        .post-form { display: flex; flex-direction: column; gap: 18px; }
+
+        .form-section {}
+
+        .form-section label {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .textarea {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            color: var(--ink);
+            background: var(--paper);
+            resize: none;
+            min-height: 90px;
+            outline: none;
+            font-family: inherit;
+            line-height: 1.65;
+            transition: border-color 0.15s;
+        }
+        .textarea:focus { border-color: var(--sage); }
+
+        .amount-row { display: flex; gap: 8px; align-items: center; }
+
+        .input-text {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            color: var(--ink);
+            background: var(--paper);
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .input-text:focus { border-color: var(--sage); }
+
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--paper);
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .icon-btn:hover { border-color: var(--sage); color: var(--sage); }
+
+        .select {
+            width: 100%;
+            padding: 12px 36px 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            color: var(--ink);
+            background: var(--paper);
+            outline: none;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239797A8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            transition: border-color 0.15s;
+        }
+        .select:focus { border-color: var(--sage); }
+
+        .btn-submit {
+            padding: 14px;
+            background: var(--sage);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
             font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.04em;
+            transition: opacity 0.15s;
+            margin-top: 4px;
+        }
+        .btn-submit:hover { opacity: 0.88; }
+
+        /* ========== 一覧画面 ========== */
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .entry-list { display: flex; flex-direction: column; }
+
+        .entry-item {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .entry-item:first-child { border-top: 1px solid var(--border); }
+
+        .entry-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .entry-date {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+        }
+
+        .entry-weather { color: var(--sage); display: flex; align-items: center; }
+
+        .entry-content {
+            font-size: 15px;
+            color: var(--ink);
+            line-height: 1.65;
+            margin-bottom: 10px;
+        }
+
+        .entry-tags { display: flex; align-items: center; gap: 8px; }
+
+        .entry-amount {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--rust);
+            letter-spacing: 0.02em;
         }
 
         .entry-category {
-            background: #f8f9fa;
-            color: #495057;
-            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--muted);
+            background: var(--paper);
+            padding: 3px 9px;
             border-radius: 4px;
-            font-size: 12px;
+            letter-spacing: 0.03em;
         }
 
-        /* 下部ナビゲーション */
+        /* ========== 振り返り画面 ========== */
+        .empty-state {
+            text-align: center;
+            color: var(--muted);
+            padding: 60px 20px;
+            font-size: 13px;
+            letter-spacing: 0.05em;
+            line-height: 2;
+        }
+
+        /* ========== 下部ナビ（fixed） ========== */
         .bottom-nav {
-            background: white;
-            border-top: 1px solid #eee;
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 390px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-around;
-            padding: 10px 0;
+            padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+            z-index: 100;
         }
 
-        .nav-item {
+        .nav-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            color: #999;
-            text-decoration: none;
-            font-size: 12px;
-            padding: 8px 16px;
+            color: var(--muted);
+            font-size: 10px;
+            padding: 6px 20px;
             border-radius: 8px;
-            transition: all 0.2s;
+            background: none;
+            border: none;
+            font-family: inherit;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s;
         }
+        .nav-btn.active { color: var(--sage); }
 
-        .nav-item.active {
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.1);
-        }
-
-        .nav-item-icon {
-            font-size: 20px;
-        }
-
-        /* レスポンシブ対応 */
-        @media (max-width: 480px) {
-            .app-container {
-                max-width: 100%;
-                height: 100vh;
-            }
-
-            .header {
-                padding: 15px;
-            }
-
-            .screen {
-                padding: 15px;
-            }
-
-            .weather-display {
-                margin: -15px -15px 15px -15px;
-            }
-        }
-
-        /* ユーティリティ */
-        .hidden {
-            display: none;
-        }
-
-        .loading {
-            text-align: center;
-            color: #999;
-            padding: 20px;
+        @media (max-width: 390px) {
+            .app { max-width: 100%; }
+            .bottom-nav { max-width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- ログイン画面 -->
-        <div id="loginScreen" class="screen active">
-            <div class="login-screen">
-                <div class="login-title">💰 お金日記</div>
-                <div class="login-subtitle">一言の日記とお金を軽く記録</div>
-                
-                <form class="login-form" id="loginForm">
-                    <div class="form-group">
-                        <label>メールアドレス</label>
-                        <input type="email" id="loginEmail" required placeholder="example@mail.com">
-                    </div>
-                    <div class="form-group">
-                        <label>パスワード</label>
-                        <input type="password" id="loginPassword" required placeholder="パスワード">
-                    </div>
-                    <button type="submit" class="login-btn">ログイン</button>
-                    <button type="button" class="register-btn" id="showRegister">新規登録</button>
-                </form>
-                <div style="margin-top: 24px; text-align: center;">
-                    <button type="button" id="demoBtn" style="background:none;border:none;color:#999;font-size:13px;cursor:pointer;text-decoration:underline;">
-                        デモで見る（ログイン不要）
-                    </button>
-                </div>
-            </div>
+<div class="app">
+
+    <!-- ========== ログイン画面 ========== -->
+    <div id="loginScreen">
+        <div class="login-logo">
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+                <path d="M13 4v18M6 9h10a4 4 0 0 1 0 8H6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
+        <div class="login-title">お金日記</div>
+        <div class="login-sub">一言と、お金を、気軽に残す</div>
 
-        <!-- メインアプリ（ログイン後表示） -->
-        <div id="mainApp" class="screen">
-            <!-- ヘッダー -->
-            <div class="header">
-                <h1>お金日記</h1>
-                <button class="logout-btn" id="logoutBtn">ログアウト</button>
+        <form class="login-form" id="loginForm">
+            <div class="field">
+                <label>メールアドレス</label>
+                <input type="email" id="loginEmail" required placeholder="example@mail.com">
             </div>
-
-            <div class="main-content">
-                <!-- 投稿画面 -->
-                <div id="postScreen" class="screen active">
-                    <div class="weather-display" id="weatherDisplay">
-                        ☀️ 晴れ 18℃ 🌡 室温 --℃
-                    </div>
-
-                    <form class="post-form" id="postForm">
-                        <div class="form-section">
-                            <label for="postContent">一言：</label>
-                            <textarea 
-                                id="postContent" 
-                                class="content-input" 
-                                placeholder="今日はどんな一日でしたか？"
-                                required
-                            ></textarea>
-                        </div>
-
-                        <div class="form-section">
-                            <label>金額：</label>
-                            <div class="amount-section">
-                                <input 
-                                    type="text" 
-                                    id="postAmount" 
-                                    class="amount-input" 
-                                    placeholder="¥1000 または 1000+500"
-                                >
-                                <button type="button" class="helper-btn" id="calculatorBtn" title="電卓">🧮</button>
-                                <button type="button" class="helper-btn" id="receiptBtn" title="レシートOCR">📷</button>
-                            </div>
-                        </div>
-
-                        <div class="form-section">
-                            <label for="postCategory">カテゴリ：</label>
-                            <select id="postCategory" class="category-select">
-                                <option value="">選択なし</option>
-                                <option value="食費">食費</option>
-                                <option value="趣味">趣味</option>
-                                <option value="交通">交通</option>
-                                <option value="その他">その他</option>
-                            </select>
-                        </div>
-
-                        <button type="submit" class="submit-btn">投稿する</button>
-                    </form>
-                </div>
-
-                <!-- 一覧画面 -->
-                <div id="listScreen" class="screen">
-                    <div class="list-header">記録一覧</div>
-                    <div class="entry-list" id="entryList">
-                        <!-- サンプルデータ -->
-                        <div class="entry-item">
-                            <div class="entry-date">05/21 ☀️</div>
-                            <div class="entry-content">ラーメン食べた</div>
-                            <div class="entry-details">
-                                <span class="entry-amount">¥980</span>
-                                <span class="entry-category">食費</span>
-                            </div>
-                        </div>
-                        <div class="entry-item">
-                            <div class="entry-date">05/20 ☁️</div>
-                            <div class="entry-content">今日は何も買ってない</div>
-                            <div class="entry-details">
-                                <span class="entry-amount">--</span>
-                                <span class="entry-category">--</span>
-                            </div>
-                        </div>
-                        <div class="entry-item">
-                            <div class="entry-date">05/19 🌧️</div>
-                            <div class="entry-content">カラオケ楽しかった</div>
-                            <div class="entry-details">
-                                <span class="entry-amount">¥1500</span>
-                                <span class="entry-category">趣味</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 振り返り画面（将来用） -->
-                <div id="statsScreen" class="screen">
-                    <div class="list-header">振り返り</div>
-                    <div class="loading">準備中... 📊</div>
-                </div>
+            <div class="field">
+                <label>パスワード</label>
+                <input type="password" id="loginPassword" required placeholder="••••••">
             </div>
+            <button type="submit" class="btn-primary">ログイン</button>
+            <button type="button" class="btn-outline" id="showRegister">新規登録</button>
+        </form>
 
-            <!-- 下部ナビゲーション -->
-            <div class="bottom-nav">
-                <a href="#" class="nav-item active" data-screen="postScreen">
-                    <div class="nav-item-icon">✏️</div>
-                    <div>投稿</div>
-                </a>
-                <a href="#" class="nav-item" data-screen="listScreen">
-                    <div class="nav-item-icon">📋</div>
-                    <div>一覧</div>
-                </a>
-                <a href="#" class="nav-item" data-screen="statsScreen">
-                    <div class="nav-item-icon">📊</div>
-                    <div>振り返り</div>
-                </a>
-            </div>
+        <div class="demo-link">
+            <button type="button" id="demoBtn">デモで見る（ログイン不要）</button>
         </div>
     </div>
 
-    <!-- 設定ファイル読み込み -->
-    <script src="config.js"></script>
-    
-    <script>
-        // 安全な計算式評価（eval()の代替）
-        // 数字と +, -, *, /, (, ), . のみ許可して計算する
-        function safeCalculate(expr) {
-            const cleaned = expr.replace(/[¥,\s]/g, '');
-            if (!/^[\d+\-*/().\s]+$/.test(cleaned)) {
-                throw new Error('使える文字は数字と + - * / のみです');
-            }
-            // 小数点が複数連続しているような不正なパターンを弾く
-            if (/\.{2,}/.test(cleaned)) {
-                throw new Error('計算式が正しくありません');
-            }
-            const result = Function('"use strict"; return (' + cleaned + ')')();
-            if (!isFinite(result) || isNaN(result)) {
-                throw new Error('計算結果が正しくありません（ゼロ除算など）');
-            }
-            return Math.round(result);
-        }
+    <!-- ========== メインアプリ ========== -->
+    <div id="mainApp">
+        <div class="header">
+            <div class="header-title">お金日記</div>
+            <button class="btn-logout" id="logoutBtn">ログアウト</button>
+        </div>
 
-        // アプリケーション状態管理
-        let currentUser = null;
-        let authToken = null;
-        let isDemoMode = false;
+        <div class="main-content">
 
-        // デモ用のサンプルデータ
-        const DEMO_ENTRIES = [
-            {
-                formatted_date: '05/21',
-                weather_icon: '☀️',
-                content: 'ラーメン食べた。久々においしかった',
-                formatted_amount: '¥980',
-                category: '食費',
-            },
-            {
-                formatted_date: '05/20',
-                weather_icon: '☁️',
-                content: '今日は何も買ってない。家でゆっくりした',
-                formatted_amount: null,
-                category: null,
-            },
-            {
-                formatted_date: '05/19',
-                weather_icon: '🌧️',
-                content: 'カラオケ楽しかった！友達と3時間',
-                formatted_amount: '¥1,500',
-                category: '趣味',
-            },
-            {
-                formatted_date: '05/18',
-                weather_icon: '☀️',
-                content: 'コンビニでコーヒーとサンドイッチ',
-                formatted_amount: '¥650',
-                category: '食費',
-            },
-        ];
-        
-        // Edge Functions API 呼び出し用のヘルパー関数
-        async function callEdgeFunction(functionName, data = null, method = 'POST') {
-            const url = `${CONFIG.SUPABASE_URL}${CONFIG.EDGE_FUNCTIONS[functionName]}`;
-            
-            const headers = {
-                'Content-Type': 'application/json',
-                'apikey': CONFIG.SUPABASE_ANON_KEY,
-            };
+            <!-- 投稿画面 -->
+            <div id="postScreen" class="screen active">
+                <div class="weather-row">
+                    <span id="weatherIconWrap">
+                        <!-- SVG sun (デフォルト) -->
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <circle cx="9" cy="9" r="3.2" stroke="currentColor" stroke-width="1.4"/>
+                            <line x1="9" y1="1" x2="9" y2="2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="9" y1="15.2" x2="9" y2="17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="1" y1="9" x2="2.8" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="15.2" y1="9" x2="17" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="3.05" y1="3.05" x2="4.32" y2="4.32" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="13.68" y1="13.68" x2="14.95" y2="14.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="14.95" y1="3.05" x2="13.68" y2="4.32" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <line x1="4.32" y1="13.68" x2="3.05" y2="14.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <span class="weather-text" id="weatherDisplay">投稿時に天気を自動で記録します</span>
+                </div>
 
-            // 認証トークンがあれば追加
-            if (authToken) {
-                headers['Authorization'] = `Bearer ${authToken}`;
-            }
-            
-            const options = {
-                method,
-                headers,
-            };
-            
-            if (data && method !== 'GET') {
-                options.body = JSON.stringify(data);
-            }
-            
-            const response = await fetch(url, options);
-            return await response.json();
-        }
-        
-        // DOM読み込み完了後に初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('アプリケーション初期化: Edge Functions 方式');
-        
-        // 画面切り替え機能
-            // ナビゲーションのクリックイベント
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    const targetScreen = this.dataset.screen;
-                    
-                    // すべての画面を非表示
-                    document.querySelectorAll('#mainApp .screen').forEach(screen => {
-                        screen.classList.remove('active');
-                    });
-                    
-                    // ターゲット画面を表示
-                    document.getElementById(targetScreen).classList.add('active');
-                    
-                    // ナビゲーションのアクティブ状態を更新
-                    document.querySelectorAll('.nav-item').forEach(navItem => {
-                        navItem.classList.remove('active');
-                    });
-                    this.classList.add('active');
-                });
+                <form class="post-form" id="postForm">
+                    <div class="form-section">
+                        <label>一言</label>
+                        <textarea id="postContent" class="textarea" placeholder="今日はどんな一日でしたか？" required></textarea>
+                    </div>
+
+                    <div class="form-section">
+                        <label>金額（任意）</label>
+                        <div class="amount-row">
+                            <input type="text" id="postAmount" class="input-text" placeholder="1000 または 980+200">
+                            <button type="button" class="icon-btn" id="calculatorBtn" title="計算する">
+                                <!-- calculator icon -->
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                    <rect x="2" y="2" width="14" height="14" rx="2.5" stroke="currentColor" stroke-width="1.4"/>
+                                    <rect x="5" y="5" width="8" height="2.5" rx="1" fill="currentColor"/>
+                                    <circle cx="5.5" cy="11" r="1" fill="currentColor"/>
+                                    <circle cx="9" cy="11" r="1" fill="currentColor"/>
+                                    <circle cx="12.5" cy="11" r="1" fill="currentColor"/>
+                                    <circle cx="5.5" cy="14" r="1" fill="currentColor"/>
+                                    <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                                    <circle cx="12.5" cy="14" r="1" fill="currentColor"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="icon-btn" id="receiptBtn" title="レシートOCR">
+                                <!-- camera icon -->
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                    <path d="M6 3l1.5-1.5h3L12 3h3a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 15 15H3a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 3 3h3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                                    <circle cx="9" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <label>カテゴリ（任意）</label>
+                        <select id="postCategory" class="select">
+                            <option value="">選択なし</option>
+                            <option value="食費">食費</option>
+                            <option value="趣味">趣味</option>
+                            <option value="交通">交通</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-submit">投稿する</button>
+                </form>
+            </div>
+
+            <!-- 一覧画面 -->
+            <div id="listScreen" class="screen">
+                <div class="section-label">記録</div>
+                <div class="entry-list" id="entryList"></div>
+            </div>
+
+            <!-- 振り返り画面 -->
+            <div id="statsScreen" class="screen">
+                <div class="empty-state">
+                    準備中です<br>
+                    もう少しお待ちください
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 下部ナビ（fixed） -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-screen="postScreen">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M14.5 2.5l3 3-9.5 9.5L4 16l1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>投稿</span>
+            </button>
+            <button class="nav-btn" data-screen="listScreen">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <circle cx="3.5" cy="5" r="1.2" fill="currentColor"/>
+                    <circle cx="3.5" cy="10" r="1.2" fill="currentColor"/>
+                    <circle cx="3.5" cy="15" r="1.2" fill="currentColor"/>
+                    <line x1="7" y1="5" x2="17" y2="5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <line x1="7" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <line x1="7" y1="15" x2="17" y2="15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <span>一覧</span>
+            </button>
+            <button class="nav-btn" data-screen="statsScreen">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="2" y="11" width="3.5" height="7" rx="1" stroke="currentColor" stroke-width="1.4"/>
+                    <rect x="8.25" y="7" width="3.5" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/>
+                    <rect x="14.5" y="3" width="3.5" height="15" rx="1" stroke="currentColor" stroke-width="1.4"/>
+                </svg>
+                <span>振り返り</span>
+            </button>
+        </nav>
+    </div>
+
+</div>
+
+<script src="config.js"></script>
+<script>
+    // 天気コード → SVG（小アイコン用・18px）
+    function getWeatherSVG(weather) {
+        const w = (weather || '').toLowerCase();
+        if (w === 'clear') return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.8" stroke="currentColor" stroke-width="1.3"/><line x1="8" y1="1" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="8" y1="13.5" x2="8" y2="15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="1" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="13.5" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="2.93" y1="2.93" x2="4.05" y2="4.05" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="11.95" y1="11.95" x2="13.07" y2="13.07" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="13.07" y1="2.93" x2="11.95" y2="4.05" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="4.05" y1="11.95" x2="2.93" y2="13.07" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+        if (w === 'rain' || w === 'drizzle') return `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M13 10H5a3.5 3.5 0 0 1-.7-6.93A4.8 4.8 0 0 1 13.5 5.5h.5a3 3 0 0 1 0 6h-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="6" y1="13" x2="5.2" y2="16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="10" y1="13" x2="9.2" y2="16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="14" y1="13" x2="13.2" y2="16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+        if (w === 'snow') return `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M13 10H5a3.5 3.5 0 0 1-.7-6.93A4.8 4.8 0 0 1 13.5 5.5h.5a3 3 0 0 1 0 6h-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="6" cy="15" r="1" fill="currentColor"/><circle cx="10" cy="15" r="1" fill="currentColor"/><circle cx="14" cy="15" r="1" fill="currentColor"/></svg>`;
+        if (w === 'thunderstorm') return `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M13 9H5a3.5 3.5 0 0 1-.7-6.93A4.8 4.8 0 0 1 13.5 4.5h.5a3 3 0 0 1 0 6h-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.5 12l-2 3.5h3.5l-2 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        if (w === 'mist' || w === 'fog' || w === 'haze') return `<svg width="16" height="16" viewBox="0 0 18 14" fill="none"><line x1="1" y1="2" x2="17" y2="2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="3" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="1" y1="12" x2="17" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+        // clouds（デフォルト）
+        return `<svg width="16" height="16" viewBox="0 0 18 14" fill="none"><path d="M13 12H5a3.5 3.5 0 0 1-.7-6.93A4.8 4.8 0 0 1 13.5 7h.5a3 3 0 0 1 0 6h-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
+    }
+
+    // 安全な計算式評価（eval禁止）
+    function safeCalculate(expr) {
+        const cleaned = expr.replace(/[¥,\s]/g, '');
+        if (!/^[\d+\-*/().\s]+$/.test(cleaned)) throw new Error('使える文字は数字と + - * / のみです');
+        if (/\.{2,}/.test(cleaned)) throw new Error('計算式が正しくありません');
+        const result = Function('"use strict"; return (' + cleaned + ')')();
+        if (!isFinite(result) || isNaN(result)) throw new Error('計算結果が正しくありません');
+        return Math.round(result);
+    }
+
+    // 状態
+    let currentUser = null;
+    let authToken = null;
+    let isDemoMode = false;
+
+    // デモ用サンプルデータ
+    const DEMO_ENTRIES = [
+        { formatted_date: '05/21', weather: 'clear',   content: 'ラーメン食べた。久々においしかった', formatted_amount: '¥980',   category: '食費' },
+        { formatted_date: '05/20', weather: 'clouds',  content: '今日は何も買ってない。家でゆっくりした', formatted_amount: null,    category: null },
+        { formatted_date: '05/19', weather: 'rain',    content: 'カラオケ楽しかった！友達と3時間', formatted_amount: '¥1,500', category: '趣味' },
+        { formatted_date: '05/18', weather: 'clear',   content: 'コンビニでコーヒーとサンドイッチ', formatted_amount: '¥650',   category: '食費' },
+    ];
+
+    // Edge Function 呼び出し
+    async function callEdgeFunction(functionName, data = null, method = 'POST') {
+        const url = `${CONFIG.SUPABASE_URL}${CONFIG.EDGE_FUNCTIONS[functionName]}`;
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': CONFIG.SUPABASE_ANON_KEY,
+        };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const options = { method, headers };
+        if (data && method !== 'GET') options.body = JSON.stringify(data);
+        const response = await fetch(url, options);
+        return await response.json();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // ナビゲーション
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const target = this.dataset.screen;
+                document.querySelectorAll('#mainApp .screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(target).classList.add('active');
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // 一覧画面に切り替えたとき読み込む
+                if (target === 'listScreen' && authToken) loadEntries();
             });
-
-            // ログインフォームの処理（Edge Functions版）
-            document.getElementById('loginForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                await handleLogin();
-            });
-
-            // 新規登録ボタンの処理
-            document.getElementById('showRegister').addEventListener('click', async function() {
-                await handleRegister();
-            });
-
-            // ログアウトボタンの処理
-            document.getElementById('logoutBtn').addEventListener('click', function() {
-                handleLogout();
-            });
-
-            // 投稿フォームの処理（Edge Functions版）
-            document.getElementById('postForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                await handleCreateEntry();
-            });
-
-            // 電卓ボタンの処理
-            document.getElementById('calculatorBtn').addEventListener('click', function() {
-                const amount = document.getElementById('postAmount');
-                const currentValue = amount.value;
-
-                if (currentValue.includes('+') || currentValue.includes('-') || currentValue.includes('*') || currentValue.includes('/')) {
-                    try {
-                        const result = safeCalculate(currentValue);
-                        amount.value = '¥' + result.toLocaleString();
-                    } catch (e) {
-                        alert(e.message || '計算式が正しくありません');
-                    }
-                }
-            });
-
-            // レシートOCRボタンの処理
-            document.getElementById('receiptBtn').addEventListener('click', function() {
-                alert('レシートOCR機能は後で実装されます');
-            });
-
-            // デモボタンの処理
-            document.getElementById('demoBtn').addEventListener('click', function() {
-                isDemoMode = true;
-                showMainApp();
-                displayEntries(DEMO_ENTRIES);
-            });
-
-            // 初期表示はログイン画面
-            showLoginScreen();
         });
 
-        function showLoginScreen() {
-            document.getElementById('loginScreen').classList.add('active');
-            document.getElementById('mainApp').classList.remove('active');
-        }
+        document.getElementById('loginForm').addEventListener('submit', async e => { e.preventDefault(); await handleLogin(); });
+        document.getElementById('showRegister').addEventListener('click', async () => await handleRegister());
+        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        document.getElementById('postForm').addEventListener('submit', async e => { e.preventDefault(); await handleCreateEntry(); });
 
-        function showMainApp() {
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('mainApp').classList.add('active');
-        }
-
-        // 天気情報の更新（仮データ）
-        function updateWeather() {
-            const weatherDisplay = document.getElementById('weatherDisplay');
-            const now = new Date();
-            const time = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-            weatherDisplay.textContent = `☀️ 晴れ 18℃ 🌡 室温 22℃ (${time})`;
-        }
-
-        // 1分ごとに天気情報を更新
-        setInterval(updateWeather, 60000);
-        updateWeather();
-
-        // === Edge Functions を使った認証・データ処理 ===
-
-        // ログイン処理
-        async function handleLogin() {
-            try {
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-
-                if (!email || !password) {
-                    alert('メールアドレスとパスワードを入力してください');
-                    return;
-                }
-
-                // Edge Function でログイン処理
-                const result = await callEdgeFunction('AUTH', {
-                    email,
-                    password,
-                    action: 'login'
-                });
-
-                if (result.success) {
-                    // 認証情報を保存
-                    currentUser = result.user;
-                    authToken = result.session.access_token;
-                    
-                    // メイン画面に移動
-                    showMainApp();
-                    
-                    // 投稿一覧を読み込み
-                    await loadEntries();
-                    
-                    alert(result.message || 'ログインしました');
-                } else {
-                    alert(result.message || 'ログインに失敗しました');
-                }
-            } catch (error) {
-                console.error('ログインエラー:', error);
-                alert('ログインに失敗しました');
-            }
-        }
-
-        // 新規登録処理
-        async function handleRegister() {
-            try {
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-
-                if (!email || !password) {
-                    alert('メールアドレスとパスワードを入力してください');
-                    return;
-                }
-
-                if (password.length < 6) {
-                    alert('パスワードは6文字以上で入力してください');
-                    return;
-                }
-
-                // Edge Function で新規登録処理
-                const result = await callEdgeFunction('AUTH', {
-                    email,
-                    password,
-                    action: 'register'
-                });
-
-                if (result.success) {
-                    alert(result.message || '登録完了しました。ログインしてください。');
-                } else {
-                    alert(result.message || '登録に失敗しました');
-                }
-            } catch (error) {
-                console.error('登録エラー:', error);
-                alert('登録に失敗しました');
-            }
-        }
-
-        // ログアウト処理
-        function handleLogout() {
-            currentUser = null;
-            authToken = null;
-            isDemoMode = false;
-            
-            // フォームをリセット
-            document.getElementById('loginForm').reset();
-            document.getElementById('postForm').reset();
-            
-            showLoginScreen();
-            alert('ログアウトしました');
-        }
-
-        // 投稿作成処理
-        async function handleCreateEntry() {
-            // デモモードでは実際には保存しない
-            if (isDemoMode) {
-                const content = document.getElementById('postContent').value;
-                if (!content.trim()) {
-                    alert('一言を入力してください');
-                    return;
-                }
-                const amount = document.getElementById('postAmount').value;
-                const category = document.getElementById('postCategory').value;
-                const newEntry = {
-                    formatted_date: new Date().toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' }),
-                    weather_icon: '☀️',
-                    content: content.trim(),
-                    formatted_amount: amount ? '¥' + amount.replace(/[¥,]/g, '') : null,
-                    category: category || null,
-                };
-                DEMO_ENTRIES.unshift(newEntry);
-                displayEntries(DEMO_ENTRIES);
-                document.getElementById('postForm').reset();
-                alert('デモモードで投稿しました（実際には保存されません）');
-                return;
-            }
-
-            if (!authToken) {
-                alert('ログインが必要です');
-                return;
-            }
-
-            try {
-                const content = document.getElementById('postContent').value;
-                const amount = document.getElementById('postAmount').value;
-                const category = document.getElementById('postCategory').value;
-
-                if (!content.trim()) {
-                    alert('一言を入力してください');
-                    return;
-                }
-
-                // 位置情報を取得（天気情報のため）
-                let latitude, longitude;
+        document.getElementById('calculatorBtn').addEventListener('click', function () {
+            const el = document.getElementById('postAmount');
+            const v = el.value;
+            if (v.match(/[+\-*/]/)) {
                 try {
-                    const position = await getCurrentPosition();
-                    latitude = position.coords.latitude;
-                    longitude = position.coords.longitude;
+                    el.value = '¥' + safeCalculate(v).toLocaleString();
                 } catch (e) {
-                    console.log('位置情報取得失敗（天気情報なしで投稿）');
+                    alert(e.message);
                 }
-
-                // 金額の処理（文字列から数値に変換）
-                let parsedAmount = null;
-                if (amount) {
-                    const cleanAmount = amount.replace(/[¥,]/g, '');
-                    parsedAmount = parseInt(cleanAmount) || null;
-                }
-
-                // Edge Function で投稿処理
-                const result = await callEdgeFunction('CREATE_ENTRY', {
-                    content: content.trim(),
-                    amount: parsedAmount,
-                    category: category || null,
-                    latitude,
-                    longitude
-                });
-
-                if (result.success) {
-                    alert(result.message || '投稿しました');
-                    
-                    // フォームをリセット
-                    document.getElementById('postForm').reset();
-                    
-                    // 一覧を更新
-                    await loadEntries();
-                } else {
-                    alert(result.message || '投稿に失敗しました');
-                }
-            } catch (error) {
-                console.error('投稿エラー:', error);
-                alert('投稿に失敗しました');
             }
+        });
+
+        document.getElementById('receiptBtn').addEventListener('click', () => alert('レシートOCR機能は後で実装されます'));
+
+        document.getElementById('demoBtn').addEventListener('click', function () {
+            isDemoMode = true;
+            showMainApp();
+            displayEntries(DEMO_ENTRIES);
+        });
+
+        showLoginScreen();
+    });
+
+    function showLoginScreen() {
+        document.getElementById('loginScreen').classList.add('active');
+        document.getElementById('mainApp').classList.remove('active');
+    }
+
+    function showMainApp() {
+        document.getElementById('loginScreen').classList.remove('active');
+        document.getElementById('mainApp').classList.add('active');
+    }
+
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        if (!email || !password) return alert('メールアドレスとパスワードを入力してください');
+        try {
+            const result = await callEdgeFunction('AUTH', { email, password, action: 'login' });
+            if (result.success) {
+                currentUser = result.user;
+                authToken = result.session.access_token;
+                showMainApp();
+                await loadEntries();
+            } else {
+                alert(result.message || 'ログインに失敗しました');
+            }
+        } catch (e) {
+            alert('ログインに失敗しました');
         }
+    }
 
-        // 投稿一覧読み込み
-        async function loadEntries() {
-            if (!authToken) return;
+    async function handleRegister() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        if (!email || !password) return alert('メールアドレスとパスワードを入力してください');
+        if (password.length < 6) return alert('パスワードは6文字以上で入力してください');
+        try {
+            const result = await callEdgeFunction('AUTH', { email, password, action: 'register' });
+            alert(result.success ? '登録完了しました。確認メールをご確認ください。' : (result.message || '登録に失敗しました'));
+        } catch (e) {
+            alert('登録に失敗しました');
+        }
+    }
 
+    function handleLogout() {
+        currentUser = null;
+        authToken = null;
+        isDemoMode = false;
+        document.getElementById('loginForm').reset();
+        document.getElementById('postForm').reset();
+        showLoginScreen();
+    }
+
+    async function handleCreateEntry() {
+        if (isDemoMode) {
+            const content = document.getElementById('postContent').value;
+            if (!content.trim()) return alert('一言を入力してください');
+            const amount = document.getElementById('postAmount').value;
+            const category = document.getElementById('postCategory').value;
+            DEMO_ENTRIES.unshift({
+                formatted_date: new Date().toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' }),
+                weather: 'clear',
+                content: content.trim(),
+                formatted_amount: amount ? '¥' + amount.replace(/[¥,]/g, '') : null,
+                category: category || null,
+            });
+            displayEntries(DEMO_ENTRIES);
+            document.getElementById('postForm').reset();
+            return;
+        }
+        if (!authToken) return alert('ログインが必要です');
+        try {
+            const content = document.getElementById('postContent').value;
+            const amount = document.getElementById('postAmount').value;
+            const category = document.getElementById('postCategory').value;
+            if (!content.trim()) return alert('一言を入力してください');
+
+            let latitude, longitude;
             try {
-                const result = await callEdgeFunction('GET_ENTRIES', null, 'GET');
+                const pos = await getCurrentPosition();
+                latitude = pos.coords.latitude;
+                longitude = pos.coords.longitude;
+            } catch (e) { /* 位置情報なしで続行 */ }
 
-                if (result.success) {
-                    displayEntries(result.entries);
-                } else {
-                    console.error('一覧取得失敗:', result.message);
-                }
-            } catch (error) {
-                console.error('一覧読み込みエラー:', error);
-            }
-        }
+            let parsedAmount = null;
+            if (amount) parsedAmount = parseInt(amount.replace(/[¥,]/g, '')) || null;
 
-        // 投稿一覧の表示
-        // innerHTML に直接ユーザー入力を埋め込まないよう DOM 操作で構築する
-        function displayEntries(entries) {
-            const entryList = document.getElementById('entryList');
-            entryList.innerHTML = '';
-
-            if (!entries || entries.length === 0) {
-                const empty = document.createElement('div');
-                empty.style.cssText = 'text-align:center;color:#999;padding:20px;';
-                empty.textContent = 'まだ投稿がありません';
-                entryList.appendChild(empty);
-                return;
-            }
-
-            entries.forEach(entry => {
-                const item = document.createElement('div');
-                item.className = 'entry-item';
-
-                const date = document.createElement('div');
-                date.className = 'entry-date';
-                date.textContent = (entry.formatted_date || '') + ' ' + (entry.weather_icon || '☀️');
-
-                const content = document.createElement('div');
-                content.className = 'entry-content';
-                content.textContent = entry.content;
-
-                const details = document.createElement('div');
-                details.className = 'entry-details';
-
-                const amount = document.createElement('span');
-                amount.className = 'entry-amount';
-                amount.textContent = entry.formatted_amount || '--';
-
-                const category = document.createElement('span');
-                category.className = 'entry-category';
-                category.textContent = entry.category || '--';
-
-                details.appendChild(amount);
-                details.appendChild(category);
-                item.appendChild(date);
-                item.appendChild(content);
-                item.appendChild(details);
-                entryList.appendChild(item);
+            const result = await callEdgeFunction('CREATE_ENTRY', {
+                content: content.trim(), amount: parsedAmount, category: category || null, latitude, longitude
             });
+
+            if (result.success) {
+                document.getElementById('postForm').reset();
+                await loadEntries();
+            } else {
+                alert(result.message || '投稿に失敗しました');
+            }
+        } catch (e) {
+            alert('投稿に失敗しました');
+        }
+    }
+
+    async function loadEntries() {
+        if (!authToken) return;
+        try {
+            const result = await callEdgeFunction('GET_ENTRIES', null, 'GET');
+            if (result.success) displayEntries(result.entries);
+        } catch (e) { /* silent */ }
+    }
+
+    // XSSリスクなしにDOMを構築
+    function displayEntries(entries) {
+        const list = document.getElementById('entryList');
+        list.innerHTML = '';
+
+        if (!entries || entries.length === 0) {
+            const el = document.createElement('div');
+            el.className = 'empty-state';
+            el.textContent = 'まだ記録がありません';
+            list.appendChild(el);
+            return;
         }
 
-        // 位置情報取得（Promise版）
-        function getCurrentPosition() {
-            return new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error('位置情報がサポートされていません'));
-                    return;
-                }
-                
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    timeout: 10000,
-                    enableHighAccuracy: false
-                });
-            });
-        }
-    </script>
+        entries.forEach(entry => {
+            const item = document.createElement('div');
+            item.className = 'entry-item';
+
+            // 日付 + 天気
+            const meta = document.createElement('div');
+            meta.className = 'entry-meta';
+
+            const date = document.createElement('span');
+            date.className = 'entry-date';
+            date.textContent = entry.formatted_date || '';
+
+            // 天気SVGはユーザー入力ではなく定義済みのSVGなのでinnerHTML使用可
+            const weather = document.createElement('span');
+            weather.className = 'entry-weather';
+            weather.innerHTML = getWeatherSVG(entry.weather || entry.weather_icon);
+
+            meta.appendChild(date);
+            meta.appendChild(weather);
+
+            const content = document.createElement('div');
+            content.className = 'entry-content';
+            content.textContent = entry.content;
+
+            const tags = document.createElement('div');
+            tags.className = 'entry-tags';
+
+            if (entry.formatted_amount) {
+                const amt = document.createElement('span');
+                amt.className = 'entry-amount';
+                amt.textContent = entry.formatted_amount;
+                tags.appendChild(amt);
+            }
+
+            if (entry.category) {
+                const cat = document.createElement('span');
+                cat.className = 'entry-category';
+                cat.textContent = entry.category;
+                tags.appendChild(cat);
+            }
+
+            item.appendChild(meta);
+            item.appendChild(content);
+            if (tags.children.length > 0) item.appendChild(tags);
+            list.appendChild(item);
+        });
+    }
+
+    function getCurrentPosition() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) return reject(new Error('位置情報未対応'));
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        });
+    }
+</script>
 </body>
 </html>
