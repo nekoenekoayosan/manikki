@@ -502,6 +502,24 @@
     <script src="config.js"></script>
     
     <script>
+        // 安全な計算式評価（eval()の代替）
+        // 数字と +, -, *, /, (, ), . のみ許可して計算する
+        function safeCalculate(expr) {
+            const cleaned = expr.replace(/[¥,\s]/g, '');
+            if (!/^[\d+\-*/().\s]+$/.test(cleaned)) {
+                throw new Error('使える文字は数字と + - * / のみです');
+            }
+            // 小数点が複数連続しているような不正なパターンを弾く
+            if (/\.{2,}/.test(cleaned)) {
+                throw new Error('計算式が正しくありません');
+            }
+            const result = Function('"use strict"; return (' + cleaned + ')')();
+            if (!isFinite(result) || isNaN(result)) {
+                throw new Error('計算結果が正しくありません（ゼロ除算など）');
+            }
+            return Math.round(result);
+        }
+
         // アプリケーション状態管理
         let currentUser = null;
         let authToken = null;
@@ -586,14 +604,13 @@
             document.getElementById('calculatorBtn').addEventListener('click', function() {
                 const amount = document.getElementById('postAmount');
                 const currentValue = amount.value;
-                
-                // 簡易的な式の計算処理
+
                 if (currentValue.includes('+') || currentValue.includes('-') || currentValue.includes('*') || currentValue.includes('/')) {
                     try {
-                        const result = eval(currentValue.replace(/[¥,]/g, ''));
+                        const result = safeCalculate(currentValue);
                         amount.value = '¥' + result.toLocaleString();
                     } catch (e) {
-                        alert('計算式が正しくありません');
+                        alert(e.message || '計算式が正しくありません');
                     }
                 }
             });
@@ -795,24 +812,49 @@
         }
 
         // 投稿一覧の表示
+        // innerHTML に直接ユーザー入力を埋め込まないよう DOM 操作で構築する
         function displayEntries(entries) {
             const entryList = document.getElementById('entryList');
-            
+            entryList.innerHTML = '';
+
             if (!entries || entries.length === 0) {
-                entryList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">まだ投稿がありません</div>';
+                const empty = document.createElement('div');
+                empty.style.cssText = 'text-align:center;color:#999;padding:20px;';
+                empty.textContent = 'まだ投稿がありません';
+                entryList.appendChild(empty);
                 return;
             }
 
-            entryList.innerHTML = entries.map(entry => `
-                <div class="entry-item">
-                    <div class="entry-date">${entry.formatted_date} ${entry.weather_icon || '☀️'}</div>
-                    <div class="entry-content">${entry.content}</div>
-                    <div class="entry-details">
-                        <span class="entry-amount">${entry.formatted_amount || '--'}</span>
-                        <span class="entry-category">${entry.category || '--'}</span>
-                    </div>
-                </div>
-            `).join('');
+            entries.forEach(entry => {
+                const item = document.createElement('div');
+                item.className = 'entry-item';
+
+                const date = document.createElement('div');
+                date.className = 'entry-date';
+                date.textContent = (entry.formatted_date || '') + ' ' + (entry.weather_icon || '☀️');
+
+                const content = document.createElement('div');
+                content.className = 'entry-content';
+                content.textContent = entry.content;
+
+                const details = document.createElement('div');
+                details.className = 'entry-details';
+
+                const amount = document.createElement('span');
+                amount.className = 'entry-amount';
+                amount.textContent = entry.formatted_amount || '--';
+
+                const category = document.createElement('span');
+                category.className = 'entry-category';
+                category.textContent = entry.category || '--';
+
+                details.appendChild(amount);
+                details.appendChild(category);
+                item.appendChild(date);
+                item.appendChild(content);
+                item.appendChild(details);
+                entryList.appendChild(item);
+            });
         }
 
         // 位置情報取得（Promise版）

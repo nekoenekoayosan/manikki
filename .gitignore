@@ -3,9 +3,6 @@
 .env.local
 .env.production
 
-# 設定ファイル (APIキーを含むため)
-config.js
-
 # Node modules (将来使う可能性があるため)
 node_modules/
 npm-debug.log*
@@ -39,4 +36,9 @@ build/
 # Supabase (ローカル開発用)
 supabase/.branches
 supabase/.temp
+.supabase/
 .vercel
+
+# VSCode ワークスペースファイル
+*.code-workspace
+
