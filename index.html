@@ -353,6 +353,12 @@
 
         .entry-weather { color: var(--sage); display: flex; align-items: center; }
 
+        .entry-temp {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 0.02em;
+        }
+
         .entry-content {
             font-size: 15px;
             color: var(--ink);
@@ -615,10 +621,10 @@
 
     // デモ用サンプルデータ
     const DEMO_ENTRIES = [
-        { formatted_date: '05/21', weather: 'clear',   content: 'ラーメン食べた。久々においしかった', formatted_amount: '¥980',   category: '食費' },
-        { formatted_date: '05/20', weather: 'clouds',  content: '今日は何も買ってない。家でゆっくりした', formatted_amount: null,    category: null },
-        { formatted_date: '05/19', weather: 'rain',    content: 'カラオケ楽しかった！友達と3時間', formatted_amount: '¥1,500', category: '趣味' },
-        { formatted_date: '05/18', weather: 'clear',   content: 'コンビニでコーヒーとサンドイッチ', formatted_amount: '¥650',   category: '食費' },
+        { formatted_date: '05/21', weather: 'clear',   temperature: 18, content: 'ラーメン食べた。久々においしかった', formatted_amount: '¥980',   category: '食費' },
+        { formatted_date: '05/20', weather: 'clouds',  temperature: 14, content: '今日は何も買ってない。家でゆっくりした', formatted_amount: null,    category: null },
+        { formatted_date: '05/19', weather: 'rain',    temperature: 11, content: 'カラオケ楽しかった！友達と3時間', formatted_amount: '¥1,500', category: '趣味' },
+        { formatted_date: '05/18', weather: 'clear',   temperature: 20, content: 'コンビニでコーヒーとサンドイッチ', formatted_amount: '¥650',   category: '食費' },
     ];
 
     // Edge Function 呼び出し
@@ -818,6 +824,13 @@
 
             meta.appendChild(date);
             meta.appendChild(weather);
+
+            if (entry.temperature != null) {
+                const temp = document.createElement('span');
+                temp.className = 'entry-temp';
+                temp.textContent = entry.temperature + '℃';
+                meta.appendChild(temp);
+            }
 
             const content = document.createElement('div');
             content.className = 'entry-content';
