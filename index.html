@@ -443,9 +443,82 @@
         }
         .nav-btn.active { color: var(--sage); }
 
+        /* ========== 電卓モーダル ========== */
+        .calc-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .calc-overlay.open { display: flex; }
+
+        .calc-modal {
+            background: var(--surface);
+            width: 100%;
+            max-width: 390px;
+            border-radius: 20px 20px 0 0;
+            padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+        }
+
+        .calc-display {
+            text-align: right;
+            padding: 4px 6px 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 14px;
+        }
+
+        .calc-expr {
+            font-size: 13px;
+            color: var(--muted);
+            min-height: 18px;
+            letter-spacing: 0.02em;
+        }
+
+        .calc-value {
+            font-size: 40px;
+            font-weight: 300;
+            color: var(--ink);
+            margin-top: 2px;
+            letter-spacing: -0.01em;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .calc-btn {
+            padding: 17px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 20px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: opacity 0.1s;
+        }
+        .calc-btn:active { opacity: 0.6; }
+
+        .calc-num  { background: var(--paper); color: var(--ink); }
+        .calc-op   { background: var(--sage-light); color: var(--sage); font-weight: 600; }
+        .calc-eq   { background: var(--sage); color: white; font-weight: 600; }
+        .calc-c    { background: var(--paper); color: var(--rust); font-weight: 600; }
+        .calc-ok   {
+            grid-column: span 2;
+            background: var(--ink);
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
         @media (max-width: 390px) {
             .app { max-width: 100%; }
             .bottom-nav { max-width: 100%; }
+            .calc-modal { max-width: 100%; }
         }
     </style>
 </head>
@@ -605,6 +678,41 @@
 
 </div>
 
+<!-- ========== 電卓モーダル ========== -->
+<div class="calc-overlay" id="calcOverlay">
+    <div class="calc-modal">
+        <div class="calc-display">
+            <div class="calc-expr" id="calcExpr"></div>
+            <div class="calc-value" id="calcValue">0</div>
+        </div>
+        <div class="calc-grid">
+            <button class="calc-btn calc-c"   data-calc="C">C</button>
+            <button class="calc-btn calc-num" data-calc="⌫">⌫</button>
+            <button class="calc-btn calc-op"  data-calc="÷">÷</button>
+            <button class="calc-btn calc-op"  data-calc="×">×</button>
+
+            <button class="calc-btn calc-num" data-calc="7">7</button>
+            <button class="calc-btn calc-num" data-calc="8">8</button>
+            <button class="calc-btn calc-num" data-calc="9">9</button>
+            <button class="calc-btn calc-op"  data-calc="−">−</button>
+
+            <button class="calc-btn calc-num" data-calc="4">4</button>
+            <button class="calc-btn calc-num" data-calc="5">5</button>
+            <button class="calc-btn calc-num" data-calc="6">6</button>
+            <button class="calc-btn calc-op"  data-calc="+">+</button>
+
+            <button class="calc-btn calc-num" data-calc="1">1</button>
+            <button class="calc-btn calc-num" data-calc="2">2</button>
+            <button class="calc-btn calc-num" data-calc="3">3</button>
+            <button class="calc-btn calc-eq"  data-calc="=">=</button>
+
+            <button class="calc-btn calc-num" data-calc="0">0</button>
+            <button class="calc-btn calc-num" data-calc=".">.</button>
+            <button class="calc-btn calc-ok"  id="calcOkBtn">OK</button>
+        </div>
+    </div>
+</div>
+
 <script src="config.js"></script>
 <script>
     // 天気コード → SVG（小アイコン用・18px）
@@ -733,16 +841,83 @@
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
         document.getElementById('postForm').addEventListener('submit', async e => { e.preventDefault(); await handleCreateEntry(); });
 
-        document.getElementById('calculatorBtn').addEventListener('click', function () {
-            const el = document.getElementById('postAmount');
-            const v = el.value;
-            if (v.match(/[+\-*/]/)) {
-                try {
-                    el.value = '¥' + safeCalculate(v).toLocaleString();
-                } catch (e) {
-                    alert(e.message);
+        // 電卓の状態
+        let calcCurrent = '0';
+        let calcPrev = null;
+        let calcOp = null;
+        let calcJustCalced = false;
+
+        function calcCompute() {
+            const a = calcPrev;
+            const b = parseFloat(calcCurrent);
+            if (calcOp === '+') return a + b;
+            if (calcOp === '−') return a - b;
+            if (calcOp === '×') return a * b;
+            if (calcOp === '÷') return b !== 0 ? a / b : 0;
+            return b;
+        }
+
+        function calcUpdateDisplay() {
+            const num = parseFloat(calcCurrent);
+            document.getElementById('calcValue').textContent =
+                isNaN(num) ? '0' : Math.round(num * 100) / 100;
+            document.getElementById('calcExpr').textContent =
+                calcPrev != null && calcOp ? `${calcPrev} ${calcOp}` : '';
+        }
+
+        function calcInput(val) {
+            if (val === 'C') {
+                calcCurrent = '0'; calcPrev = null; calcOp = null; calcJustCalced = false;
+            } else if (val === '⌫') {
+                calcCurrent = calcCurrent.length > 1 ? calcCurrent.slice(0, -1) : '0';
+                calcJustCalced = false;
+            } else if (['+', '−', '×', '÷'].includes(val)) {
+                if (calcOp && !calcJustCalced) calcCurrent = String(calcCompute());
+                calcPrev = parseFloat(calcCurrent);
+                calcOp = val;
+                calcCurrent = '0';
+                calcJustCalced = false;
+            } else if (val === '=') {
+                if (calcOp) {
+                    calcCurrent = String(Math.round(calcCompute() * 100) / 100);
+                    calcPrev = null; calcOp = null; calcJustCalced = true;
                 }
+            } else if (val === '.') {
+                if (!calcCurrent.includes('.')) calcCurrent += '.';
+                calcJustCalced = false;
+            } else {
+                calcCurrent = (calcCurrent === '0' || calcJustCalced) ? val : calcCurrent + val;
+                calcJustCalced = false;
             }
+            calcUpdateDisplay();
+        }
+
+        function openCalc() {
+            calcCurrent = '0'; calcPrev = null; calcOp = null; calcJustCalced = false;
+            calcUpdateDisplay();
+            document.getElementById('calcOverlay').classList.add('open');
+        }
+
+        function closeCalc() {
+            document.getElementById('calcOverlay').classList.remove('open');
+        }
+
+        document.getElementById('calculatorBtn').addEventListener('click', openCalc);
+
+        document.getElementById('calcOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeCalc();
+        });
+
+        document.querySelectorAll('[data-calc]').forEach(btn => {
+            btn.addEventListener('click', () => calcInput(btn.dataset.calc));
+        });
+
+        document.getElementById('calcOkBtn').addEventListener('click', function() {
+            const result = Math.round(parseFloat(calcCurrent));
+            if (!isNaN(result) && result > 0) {
+                document.getElementById('postAmount').value = '¥' + result.toLocaleString();
+            }
+            closeCalc();
         });
 
         document.getElementById('receiptBtn').addEventListener('click', () => alert('レシートOCR機能は後で実装されます'));
