@@ -37,7 +37,7 @@
 
 ```bash
 # リポジトリをクローン
-git clone [repository-url]
+git clone https://github.com/nekoenekoayosan/manikki.git
 cd manikki
 
 # ローカルサーバーで起動（例：Python）
@@ -48,4 +48,6 @@ npx serve .
 
 ## デプロイURL
 
-TBD（Vercel デプロイ後に記載）
+🚀 **本番環境**: https://manikki.vercel.app
+
+📱 ライブデモ：上記URLから実際にアプリを試せます！
