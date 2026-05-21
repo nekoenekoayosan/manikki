@@ -383,6 +383,11 @@
                     <button type="submit" class="login-btn">ログイン</button>
                     <button type="button" class="register-btn" id="showRegister">新規登録</button>
                 </form>
+                <div style="margin-top: 24px; text-align: center;">
+                    <button type="button" id="demoBtn" style="background:none;border:none;color:#999;font-size:13px;cursor:pointer;text-decoration:underline;">
+                        デモで見る（ログイン不要）
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -523,6 +528,39 @@
         // アプリケーション状態管理
         let currentUser = null;
         let authToken = null;
+        let isDemoMode = false;
+
+        // デモ用のサンプルデータ
+        const DEMO_ENTRIES = [
+            {
+                formatted_date: '05/21',
+                weather_icon: '☀️',
+                content: 'ラーメン食べた。久々においしかった',
+                formatted_amount: '¥980',
+                category: '食費',
+            },
+            {
+                formatted_date: '05/20',
+                weather_icon: '☁️',
+                content: '今日は何も買ってない。家でゆっくりした',
+                formatted_amount: null,
+                category: null,
+            },
+            {
+                formatted_date: '05/19',
+                weather_icon: '🌧️',
+                content: 'カラオケ楽しかった！友達と3時間',
+                formatted_amount: '¥1,500',
+                category: '趣味',
+            },
+            {
+                formatted_date: '05/18',
+                weather_icon: '☀️',
+                content: 'コンビニでコーヒーとサンドイッチ',
+                formatted_amount: '¥650',
+                category: '食費',
+            },
+        ];
         
         // Edge Functions API 呼び出し用のヘルパー関数
         async function callEdgeFunction(functionName, data = null, method = 'POST') {
@@ -618,6 +656,13 @@
             // レシートOCRボタンの処理
             document.getElementById('receiptBtn').addEventListener('click', function() {
                 alert('レシートOCR機能は後で実装されます');
+            });
+
+            // デモボタンの処理
+            document.getElementById('demoBtn').addEventListener('click', function() {
+                isDemoMode = true;
+                showMainApp();
+                displayEntries(DEMO_ENTRIES);
             });
 
             // 初期表示はログイン画面
@@ -725,6 +770,7 @@
         function handleLogout() {
             currentUser = null;
             authToken = null;
+            isDemoMode = false;
             
             // フォームをリセット
             document.getElementById('loginForm').reset();
@@ -736,6 +782,29 @@
 
         // 投稿作成処理
         async function handleCreateEntry() {
+            // デモモードでは実際には保存しない
+            if (isDemoMode) {
+                const content = document.getElementById('postContent').value;
+                if (!content.trim()) {
+                    alert('一言を入力してください');
+                    return;
+                }
+                const amount = document.getElementById('postAmount').value;
+                const category = document.getElementById('postCategory').value;
+                const newEntry = {
+                    formatted_date: new Date().toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' }),
+                    weather_icon: '☀️',
+                    content: content.trim(),
+                    formatted_amount: amount ? '¥' + amount.replace(/[¥,]/g, '') : null,
+                    category: category || null,
+                };
+                DEMO_ENTRIES.unshift(newEntry);
+                displayEntries(DEMO_ENTRIES);
+                document.getElementById('postForm').reset();
+                alert('デモモードで投稿しました（実際には保存されません）');
+                return;
+            }
+
             if (!authToken) {
                 alert('ログインが必要です');
                 return;
