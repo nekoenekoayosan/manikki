@@ -571,11 +571,9 @@
                 'apikey': CONFIG.SUPABASE_ANON_KEY,
             };
 
-            // 認証トークンがあれば追加、なければ anon key で代用
+            // 認証トークンがあれば追加
             if (authToken) {
                 headers['Authorization'] = `Bearer ${authToken}`;
-            } else {
-                headers['Authorization'] = `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
             }
             
             const options = {

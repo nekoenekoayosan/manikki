@@ -11,7 +11,7 @@ supabase link --project-ref qifodldzjlahyvpmlhvj
 
 # 各Edge Functionをデプロイ
 echo "🔐 認証 Edge Function をデプロイ中..."
-supabase functions deploy auth
+supabase functions deploy auth --no-verify-jwt
 
 echo "✍️ 投稿作成 Edge Function をデプロイ中..."
 supabase functions deploy create-entry
