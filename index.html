@@ -363,6 +363,17 @@
             border-bottom: 1px solid var(--border);
         }
 
+        .entry-meta {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .entry-weather { color: var(--sage); display: flex; align-items: center; }
+
+        .entry-temp { font-size: 12px; color: var(--muted); }
+
         .entry-content {
             font-size: 15px;
             color: var(--ink);
@@ -879,36 +890,42 @@
             seen[date].push(entry);
         });
 
-        groups.forEach(({ date, items, rep }) => {
-            // 日付ヘッダー（天気・気温はその日の最初のエントリから）
+        groups.forEach(({ date, items }) => {
+            // 日付ヘッダー（日付だけ・天気は各投稿ごとに表示）
             const header = document.createElement('div');
             header.className = 'date-header';
-
             const dateLabel = document.createElement('span');
             dateLabel.className = 'date-header-label';
             dateLabel.textContent = date;
-
-            // 天気SVGはユーザー入力ではなく定義済みのため innerHTML 使用可
-            const weatherIcon = document.createElement('span');
-            weatherIcon.className = 'date-header-weather';
-            weatherIcon.innerHTML = getWeatherSVG(rep.weather || rep.weather_icon);
-
             header.appendChild(dateLabel);
-            header.appendChild(weatherIcon);
-
-            if (rep.temperature != null) {
-                const tempLabel = document.createElement('span');
-                tempLabel.className = 'date-header-temp';
-                tempLabel.textContent = rep.temperature + '℃';
-                header.appendChild(tempLabel);
-            }
-
             list.appendChild(header);
 
-            // その日の各投稿
+            // その日の各投稿（天気・気温は投稿ごとに個別表示）
             items.forEach(entry => {
                 const item = document.createElement('div');
                 item.className = 'entry-item';
+
+                // 天気・気温（その投稿時点のもの）
+                if (entry.weather || entry.weather_icon || entry.temperature != null) {
+                    const meta = document.createElement('div');
+                    meta.className = 'entry-meta';
+
+                    if (entry.weather || entry.weather_icon) {
+                        const weatherIcon = document.createElement('span');
+                        weatherIcon.className = 'entry-weather';
+                        weatherIcon.innerHTML = getWeatherSVG(entry.weather || entry.weather_icon);
+                        meta.appendChild(weatherIcon);
+                    }
+
+                    if (entry.temperature != null) {
+                        const tempLabel = document.createElement('span');
+                        tempLabel.className = 'entry-temp';
+                        tempLabel.textContent = entry.temperature + '℃';
+                        meta.appendChild(tempLabel);
+                    }
+
+                    item.appendChild(meta);
+                }
 
                 const content = document.createElement('div');
                 content.className = 'entry-content';
