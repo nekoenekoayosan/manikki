@@ -913,6 +913,8 @@
         });
 
         document.getElementById('calcOkBtn').addEventListener('click', function() {
+            // 計算途中（例: 980 + 200 でOK）なら自動で計算する
+            if (calcOp) calcInput('=');
             const result = Math.round(parseFloat(calcCurrent));
             if (!isNaN(result) && result > 0) {
                 document.getElementById('postAmount').value = '¥' + result.toLocaleString();
