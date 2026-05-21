@@ -3,6 +3,9 @@
 .env.local
 .env.production
 
+# 設定ファイル (APIキーを含むため)
+config.js
+
 # Node modules (将来使う可能性があるため)
 node_modules/
 npm-debug.log*

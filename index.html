@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>お金日記 - Money Diary</title>
+    <!-- Supabase クライアントライブラリ -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -496,9 +498,45 @@
         </div>
     </div>
 
+    <!-- 設定ファイル読み込み -->
+    <script src="config.js"></script>
+    
     <script>
-        // 画面切り替え機能
+        // アプリケーション状態管理
+        let currentUser = null;
+        let authToken = null;
+        
+        // Edge Functions API 呼び出し用のヘルパー関数
+        async function callEdgeFunction(functionName, data = null, method = 'POST') {
+            const url = `${CONFIG.SUPABASE_URL}${CONFIG.EDGE_FUNCTIONS[functionName]}`;
+            
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            // 認証トークンがあれば追加
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const options = {
+                method,
+                headers,
+            };
+            
+            if (data && method !== 'GET') {
+                options.body = JSON.stringify(data);
+            }
+            
+            const response = await fetch(url, options);
+            return await response.json();
+        }
+        
+        // DOM読み込み完了後に初期化
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('アプリケーション初期化: Edge Functions 方式');
+        
+        // 画面切り替え機能
             // ナビゲーションのクリックイベント
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', function(e) {
@@ -522,27 +560,26 @@
                 });
             });
 
-            // ログインフォームの処理（仮実装）
-            document.getElementById('loginForm').addEventListener('submit', function(e) {
+            // ログインフォームの処理（Edge Functions版）
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
-                // ログイン処理（後で実装）
-                showMainApp();
+                await handleLogin();
             });
 
             // 新規登録ボタンの処理
-            document.getElementById('showRegister').addEventListener('click', function() {
-                alert('新規登録機能は後で実装されます');
+            document.getElementById('showRegister').addEventListener('click', async function() {
+                await handleRegister();
             });
 
             // ログアウトボタンの処理
             document.getElementById('logoutBtn').addEventListener('click', function() {
-                showLoginScreen();
+                handleLogout();
             });
 
-            // 投稿フォームの処理（仮実装）
-            document.getElementById('postForm').addEventListener('submit', function(e) {
+            // 投稿フォームの処理（Edge Functions版）
+            document.getElementById('postForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
-                alert('投稿機能は後で実装されます');
+                await handleCreateEntry();
             });
 
             // 電卓ボタンの処理
@@ -591,6 +628,207 @@
         // 1分ごとに天気情報を更新
         setInterval(updateWeather, 60000);
         updateWeather();
+
+        // === Edge Functions を使った認証・データ処理 ===
+
+        // ログイン処理
+        async function handleLogin() {
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                if (!email || !password) {
+                    alert('メールアドレスとパスワードを入力してください');
+                    return;
+                }
+
+                // Edge Function でログイン処理
+                const result = await callEdgeFunction('AUTH', {
+                    email,
+                    password,
+                    action: 'login'
+                });
+
+                if (result.success) {
+                    // 認証情報を保存
+                    currentUser = result.user;
+                    authToken = result.session.access_token;
+                    
+                    // メイン画面に移動
+                    showMainApp();
+                    
+                    // 投稿一覧を読み込み
+                    await loadEntries();
+                    
+                    alert(result.message || 'ログインしました');
+                } else {
+                    alert(result.message || 'ログインに失敗しました');
+                }
+            } catch (error) {
+                console.error('ログインエラー:', error);
+                alert('ログインに失敗しました');
+            }
+        }
+
+        // 新規登録処理
+        async function handleRegister() {
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                if (!email || !password) {
+                    alert('メールアドレスとパスワードを入力してください');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    alert('パスワードは6文字以上で入力してください');
+                    return;
+                }
+
+                // Edge Function で新規登録処理
+                const result = await callEdgeFunction('AUTH', {
+                    email,
+                    password,
+                    action: 'register'
+                });
+
+                if (result.success) {
+                    alert(result.message || '登録完了しました。ログインしてください。');
+                } else {
+                    alert(result.message || '登録に失敗しました');
+                }
+            } catch (error) {
+                console.error('登録エラー:', error);
+                alert('登録に失敗しました');
+            }
+        }
+
+        // ログアウト処理
+        function handleLogout() {
+            currentUser = null;
+            authToken = null;
+            
+            // フォームをリセット
+            document.getElementById('loginForm').reset();
+            document.getElementById('postForm').reset();
+            
+            showLoginScreen();
+            alert('ログアウトしました');
+        }
+
+        // 投稿作成処理
+        async function handleCreateEntry() {
+            if (!authToken) {
+                alert('ログインが必要です');
+                return;
+            }
+
+            try {
+                const content = document.getElementById('postContent').value;
+                const amount = document.getElementById('postAmount').value;
+                const category = document.getElementById('postCategory').value;
+
+                if (!content.trim()) {
+                    alert('一言を入力してください');
+                    return;
+                }
+
+                // 位置情報を取得（天気情報のため）
+                let latitude, longitude;
+                try {
+                    const position = await getCurrentPosition();
+                    latitude = position.coords.latitude;
+                    longitude = position.coords.longitude;
+                } catch (e) {
+                    console.log('位置情報取得失敗（天気情報なしで投稿）');
+                }
+
+                // 金額の処理（文字列から数値に変換）
+                let parsedAmount = null;
+                if (amount) {
+                    const cleanAmount = amount.replace(/[¥,]/g, '');
+                    parsedAmount = parseInt(cleanAmount) || null;
+                }
+
+                // Edge Function で投稿処理
+                const result = await callEdgeFunction('CREATE_ENTRY', {
+                    content: content.trim(),
+                    amount: parsedAmount,
+                    category: category || null,
+                    latitude,
+                    longitude
+                });
+
+                if (result.success) {
+                    alert(result.message || '投稿しました');
+                    
+                    // フォームをリセット
+                    document.getElementById('postForm').reset();
+                    
+                    // 一覧を更新
+                    await loadEntries();
+                } else {
+                    alert(result.message || '投稿に失敗しました');
+                }
+            } catch (error) {
+                console.error('投稿エラー:', error);
+                alert('投稿に失敗しました');
+            }
+        }
+
+        // 投稿一覧読み込み
+        async function loadEntries() {
+            if (!authToken) return;
+
+            try {
+                const result = await callEdgeFunction('GET_ENTRIES', null, 'GET');
+
+                if (result.success) {
+                    displayEntries(result.entries);
+                } else {
+                    console.error('一覧取得失敗:', result.message);
+                }
+            } catch (error) {
+                console.error('一覧読み込みエラー:', error);
+            }
+        }
+
+        // 投稿一覧の表示
+        function displayEntries(entries) {
+            const entryList = document.getElementById('entryList');
+            
+            if (!entries || entries.length === 0) {
+                entryList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">まだ投稿がありません</div>';
+                return;
+            }
+
+            entryList.innerHTML = entries.map(entry => `
+                <div class="entry-item">
+                    <div class="entry-date">${entry.formatted_date} ${entry.weather_icon || '☀️'}</div>
+                    <div class="entry-content">${entry.content}</div>
+                    <div class="entry-details">
+                        <span class="entry-amount">${entry.formatted_amount || '--'}</span>
+                        <span class="entry-category">${entry.category || '--'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 位置情報取得（Promise版）
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('位置情報がサポートされていません'));
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    timeout: 10000,
+                    enableHighAccuracy: false
+                });
+            });
+        }
     </script>
 </body>
 </html>
