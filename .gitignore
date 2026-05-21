@@ -36,3 +36,4 @@ build/
 # Supabase (ローカル開発用)
 supabase/.branches
 supabase/.temp
+.vercel
