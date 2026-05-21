@@ -764,35 +764,6 @@
         return Math.round(result);
     }
 
-    // Open-MeteoのWMOコード → 天気タイプ変換
-    function wmoToType(code) {
-        if (code === 0) return 'clear';
-        if (code <= 3) return 'clouds';
-        if (code <= 48) return 'mist';
-        if (code <= 67) return 'rain';
-        if (code <= 77) return 'snow';
-        if (code <= 82) return 'rain';
-        if (code <= 86) return 'snow';
-        return 'thunderstorm';
-    }
-
-    // 投稿画面の天気を現在地から取得して表示（Open-Meteo: 無料・APIキー不要）
-    async function fetchWeatherForDisplay() {
-        try {
-            const pos = await getCurrentPosition();
-            const { latitude: lat, longitude: lon } = pos.coords;
-            const res = await fetch(
-                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Asia%2FTokyo`
-            );
-            const data = await res.json();
-            const temp = Math.round(data.current_weather.temperature);
-            const type = wmoToType(data.current_weather.weathercode);
-            document.getElementById('weatherIconWrap').innerHTML = getWeatherSVG(type);
-            document.getElementById('weatherDisplay').textContent = `${temp}℃`;
-        } catch (e) {
-            // 位置情報が取れない場合はデフォルト表示のまま
-        }
-    }
 
     // 状態
     let currentUser = null;
@@ -941,7 +912,6 @@
     function showMainApp() {
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('mainApp').classList.add('active');
-        fetchWeatherForDisplay();
     }
 
     async function handleLogin() {
