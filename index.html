@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>お金日記</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --ink:    #2F2F3D;
@@ -400,6 +401,138 @@
         }
 
         /* ========== 振り返り画面 ========== */
+        #statsScreen { padding: 0; }
+
+        .review-section {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .review-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: 0.08em;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .review-sub {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--muted);
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: var(--paper);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: -0.01em;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 160px;
+        }
+
+        .word-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .word-tag {
+            background: var(--sage-light);
+            color: var(--sage);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .word-tag-count {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .weather-stat-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .weather-stat-row:last-child { border-bottom: none; }
+
+        .weather-stat-name {
+            font-size: 13px;
+            color: var(--ink);
+            flex: 1;
+        }
+
+        .weather-stat-avg {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .on-this-day-year {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+            margin-bottom: 8px;
+            margin-top: 14px;
+        }
+
+        .on-this-day-year:first-child { margin-top: 0; }
+
+        .on-this-day-card {
+            background: var(--paper);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 14px;
+            color: var(--ink);
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        .on-this-day-tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .review-empty {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
         .empty-state {
             text-align: center;
             color: var(--muted);
@@ -638,10 +771,43 @@
 
             <!-- 振り返り画面 -->
             <div id="statsScreen" class="screen">
-                <div class="empty-state">
-                    準備中です<br>
-                    もう少しお待ちください
-                </div>
+
+                <section class="review-section">
+                    <div class="review-title">今日の過去の投稿</div>
+                    <div id="onThisDayList"></div>
+                </section>
+
+                <section class="review-section">
+                    <div class="review-title">今月のまとめ</div>
+                    <div class="stats-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">合計支出</div>
+                            <div class="stat-value" id="totalSpending">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">投稿数</div>
+                            <div class="stat-value" id="totalPosts">—</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="review-section" id="categorySection">
+                    <div class="review-title">カテゴリ別支出 <span class="review-sub">今月</span></div>
+                    <div class="chart-wrap">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="review-section" id="weatherStatsSection">
+                    <div class="review-title">天気別の平均支出</div>
+                    <div id="weatherStatsList"></div>
+                </section>
+
+                <section class="review-section">
+                    <div class="review-title">よく使った言葉 <span class="review-sub">今月</span></div>
+                    <div class="word-tags" id="wordTags"></div>
+                </section>
+
             </div>
 
         </div>
@@ -778,6 +944,9 @@
         { formatted_date: '05/18', weather: 'clear',   temperature: 20, content: 'コンビニでコーヒーとサンドイッチ', formatted_amount: '¥650',   category: '食費' },
     ];
 
+    // 読み込み済みエントリのキャッシュ（振り返り画面でも使う）
+    let cachedEntries = [];
+
     // Edge Function 呼び出し
     async function callEdgeFunction(functionName, data = null, method = 'POST') {
         let url = `${CONFIG.SUPABASE_URL}${CONFIG.EDGE_FUNCTIONS[functionName]}`;
@@ -799,14 +968,17 @@
 
         // ナビゲーション
         document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', async function () {
                 const target = this.dataset.screen;
                 document.querySelectorAll('#mainApp .screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(target).classList.add('active');
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-                // 一覧画面に切り替えたとき読み込む
                 if (target === 'listScreen' && authToken) loadEntries();
+                if (target === 'statsScreen') {
+                    if (!isDemoMode && authToken && cachedEntries.length === 0) await loadEntries();
+                    initReview(isDemoMode ? DEMO_ENTRIES : cachedEntries);
+                }
             });
         });
 
@@ -1026,8 +1198,11 @@
     async function loadEntries() {
         if (!authToken) return;
         try {
-            const result = await callEdgeFunction('GET_ENTRIES', null, 'GET');
-            if (result.success) displayEntries(result.entries);
+            const result = await callEdgeFunction('GET_ENTRIES', { limit: 100 }, 'GET');
+            if (result.success) {
+                cachedEntries = result.entries;
+                displayEntries(result.entries);
+            }
         } catch (e) { /* silent */ }
     }
 
@@ -1129,6 +1304,228 @@
             navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
         });
     }
+
+    // ========== 振り返り画面 ==========
+
+    // エントリから数値の金額を取得（デモ用のformatted_amountにも対応）
+    function getEntryAmount(entry) {
+        if (entry.amount != null) return entry.amount;
+        if (entry.formatted_amount) {
+            const n = parseInt(entry.formatted_amount.replace(/[¥,]/g, ''));
+            return isNaN(n) ? null : n;
+        }
+        return null;
+    }
+
+    // 今月のエントリだけ絞り込む
+    function getThisMonthEntries(entries) {
+        const now = new Date();
+        return entries.filter(e => {
+            if (e.created_at) {
+                const d = new Date(e.created_at);
+                return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+            }
+            if (e.formatted_date) {
+                const mm = parseInt(e.formatted_date.split('/')[0]);
+                return mm === now.getMonth() + 1;
+            }
+            return false;
+        });
+    }
+
+    // 今日の過去の投稿
+    function displayOnThisDay(entries) {
+        const container = document.getElementById('onThisDayList');
+        container.innerHTML = '';
+        const today = new Date();
+        const todayMMDD = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+
+        const past = entries.filter(e => {
+            if (!e.created_at) return false;
+            const d = new Date(e.created_at);
+            const mmdd = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+            return mmdd === todayMMDD && d.getFullYear() < today.getFullYear();
+        });
+
+        if (past.length === 0) {
+            const p = document.createElement('p');
+            p.className = 'review-empty';
+            p.textContent = '過去の投稿はまだありません。日記を続けると、去年の今日の投稿が表示されます。';
+            container.appendChild(p);
+            return;
+        }
+
+        // 年でグループ化して新しい年順に表示
+        const byYear = {};
+        past.forEach(e => {
+            const yr = new Date(e.created_at).getFullYear();
+            if (!byYear[yr]) byYear[yr] = [];
+            byYear[yr].push(e);
+        });
+
+        Object.entries(byYear).sort((a, b) => b[0] - a[0]).forEach(([year, ents]) => {
+            const yearsAgo = today.getFullYear() - parseInt(year);
+            const label = document.createElement('div');
+            label.className = 'on-this-day-year';
+            label.textContent = `${yearsAgo}年前の今日（${year}年）`;
+            container.appendChild(label);
+            ents.forEach(e => {
+                const card = document.createElement('div');
+                card.className = 'on-this-day-card';
+                const text = document.createElement('div');
+                text.textContent = e.content;
+                card.appendChild(text);
+                const amt = getEntryAmount(e);
+                if (amt || e.category) {
+                    const tags = document.createElement('div');
+                    tags.className = 'on-this-day-tags';
+                    if (amt) {
+                        const s = document.createElement('span');
+                        s.className = 'entry-amount';
+                        s.textContent = '¥' + amt.toLocaleString();
+                        tags.appendChild(s);
+                    }
+                    if (e.category) {
+                        const s = document.createElement('span');
+                        s.className = 'entry-category';
+                        s.textContent = e.category;
+                        tags.appendChild(s);
+                    }
+                    card.appendChild(tags);
+                }
+                container.appendChild(card);
+            });
+        });
+    }
+
+    // 今月のまとめ（合計支出・投稿数）
+    function displayMonthlySummary(entries) {
+        const monthly = getThisMonthEntries(entries);
+        const total = monthly.reduce((sum, e) => sum + (getEntryAmount(e) || 0), 0);
+        document.getElementById('totalSpending').textContent = '¥' + total.toLocaleString();
+        document.getElementById('totalPosts').textContent = monthly.length + '件';
+    }
+
+    // カテゴリ別支出グラフ
+    function renderCategoryChart(entries) {
+        const section = document.getElementById('categorySection');
+        const monthly = getThisMonthEntries(entries);
+        const totals = {};
+        monthly.forEach(e => {
+            const amt = getEntryAmount(e);
+            if (amt && e.category) totals[e.category] = (totals[e.category] || 0) + amt;
+        });
+        const labels = Object.keys(totals);
+        if (labels.length === 0) { section.style.display = 'none'; return; }
+        section.style.display = '';
+        // チャートの高さをカテゴリ数に合わせる
+        document.querySelector('.chart-wrap').style.height = Math.max(120, labels.length * 44) + 'px';
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        if (window._catChart) window._catChart.destroy();
+        window._catChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{ data: Object.values(totals), backgroundColor: '#7A9E95', borderRadius: 4 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        ticks: { callback: v => '¥' + v.toLocaleString(), font: { size: 10 } },
+                        grid: { color: '#E4E0D6' }
+                    },
+                    y: { grid: { display: false }, ticks: { font: { size: 12 } } }
+                }
+            }
+        });
+    }
+
+    // 天気別の平均支出
+    function renderWeatherStats(entries) {
+        const section = document.getElementById('weatherStatsSection');
+        const container = document.getElementById('weatherStatsList');
+        container.innerHTML = '';
+        const weatherNames = { clear: '晴れ', clouds: '曇り', rain: '雨', drizzle: '小雨', snow: '雪', thunderstorm: '雷雨', mist: '霧', fog: '霧', haze: 'もや' };
+        const groups = {};
+        entries.forEach(e => {
+            const amt = getEntryAmount(e);
+            if (amt && e.weather) {
+                if (!groups[e.weather]) groups[e.weather] = { total: 0, count: 0 };
+                groups[e.weather].total += amt;
+                groups[e.weather].count++;
+            }
+        });
+        const sorted = Object.entries(groups).sort((a, b) => b[1].total - a[1].total);
+        if (sorted.length === 0) { section.style.display = 'none'; return; }
+        section.style.display = '';
+        sorted.forEach(([weather, data]) => {
+            const avg = Math.round(data.total / data.count);
+            const row = document.createElement('div');
+            row.className = 'weather-stat-row';
+            const icon = document.createElement('span');
+            icon.className = 'entry-weather';
+            icon.innerHTML = getWeatherSVG(weather);
+            const name = document.createElement('span');
+            name.className = 'weather-stat-name';
+            name.textContent = weatherNames[weather] || weather;
+            const avgEl = document.createElement('span');
+            avgEl.className = 'weather-stat-avg';
+            avgEl.textContent = '平均 ¥' + avg.toLocaleString();
+            row.appendChild(icon);
+            row.appendChild(name);
+            row.appendChild(avgEl);
+            container.appendChild(row);
+        });
+    }
+
+    // よく使った言葉（漢字・カタカナの頻出ワード）
+    function displayWordFrequency(entries) {
+        const container = document.getElementById('wordTags');
+        container.innerHTML = '';
+        const monthly = getThisMonthEntries(entries);
+        const freq = {};
+        monthly.forEach(e => {
+            const text = e.content || '';
+            // 漢字2文字以上
+            (text.match(/[一-鿿]{2,}/g) || []).forEach(w => freq[w] = (freq[w] || 0) + 1);
+            // カタカナ2文字以上（長音符ー含む）
+            (text.match(/[゠-ヿ]{2,}/g) || []).forEach(w => freq[w] = (freq[w] || 0) + 1);
+        });
+        const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 15);
+        if (top.length === 0) {
+            const p = document.createElement('p');
+            p.className = 'review-empty';
+            p.textContent = '今月の投稿がまだありません。';
+            container.appendChild(p);
+            return;
+        }
+        top.forEach(([word, count]) => {
+            const tag = document.createElement('span');
+            tag.className = 'word-tag';
+            tag.textContent = word;
+            if (count > 1) {
+                const cnt = document.createElement('span');
+                cnt.className = 'word-tag-count';
+                cnt.textContent = count;
+                tag.appendChild(cnt);
+            }
+            container.appendChild(tag);
+        });
+    }
+
+    // 振り返り画面の初期化
+    function initReview(entries) {
+        displayOnThisDay(entries);
+        displayMonthlySummary(entries);
+        renderCategoryChart(entries);
+        renderWeatherStats(entries);
+        displayWordFrequency(entries);
+    }
+
 </script>
 </body>
 </html>
