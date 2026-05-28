@@ -1086,7 +1086,9 @@
                     if (entry.temperature != null) {
                         const tempLabel = document.createElement('span');
                         tempLabel.className = 'entry-temp';
-                        tempLabel.textContent = entry.temperature + '℃';
+                        let tempText = entry.temperature + '℃';
+                        if (entry.humidity != null) tempText += '　湿度 ' + entry.humidity + '%';
+                        tempLabel.textContent = tempText;
                         meta.appendChild(tempLabel);
                     }
 
