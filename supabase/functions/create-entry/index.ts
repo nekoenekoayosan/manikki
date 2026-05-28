@@ -16,6 +16,7 @@ interface WeatherData {
   weather: string
   temperature: number
   humidity: number
+  pressure: number
 }
 
 serve(async (req: Request) => {
@@ -62,6 +63,7 @@ serve(async (req: Request) => {
             weather: weatherJson.weather[0].main.toLowerCase(),
             temperature: Math.round(weatherJson.main.temp),
             humidity: weatherJson.main.humidity,
+            pressure: weatherJson.main.pressure,
           }
         }
       } catch (error) {
@@ -88,6 +90,7 @@ serve(async (req: Request) => {
       weather: weatherData?.weather || null,
       temperature: weatherData?.temperature || null,
       humidity: weatherData?.humidity || null,
+      pressure: weatherData?.pressure || null,
     }
 
     const { data: entry, error: insertError } = await supabase

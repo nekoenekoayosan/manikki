@@ -45,6 +45,7 @@ serve(async (req: Request) => {
         weather: data.weather[0].main.toLowerCase(),
         temperature: Math.round(data.main.temp),
         humidity: data.main.humidity,
+        pressure: data.main.pressure,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

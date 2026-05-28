@@ -1246,8 +1246,9 @@
             const result = await callEdgeFunction('GET_WEATHER', { lat, lon }, 'GET');
             if (!result.success) return;
             document.getElementById('weatherIconWrap').innerHTML = getWeatherSVG(result.weather);
-            document.getElementById('weatherDisplay').textContent =
-                `${result.temperature}℃　湿度 ${result.humidity}%`;
+            let weatherText = `${result.temperature}℃　湿度 ${result.humidity}%`;
+            if (result.pressure) weatherText += `　気圧 ${result.pressure}hPa`;
+            document.getElementById('weatherDisplay').textContent = weatherText;
         } catch (e) {
             // 位置情報が取れない場合はデフォルト表示のまま
         }
@@ -1411,6 +1412,7 @@
                         tempLabel.className = 'entry-temp';
                         let tempText = entry.temperature + '℃';
                         if (entry.humidity != null) tempText += '　湿度 ' + entry.humidity + '%';
+                        if (entry.pressure != null) tempText += '　' + entry.pressure + 'hPa';
                         tempLabel.textContent = tempText;
                         meta.appendChild(tempLabel);
                     }
