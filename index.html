@@ -780,7 +780,10 @@
 
     // Edge Function 呼び出し
     async function callEdgeFunction(functionName, data = null, method = 'POST') {
-        const url = `${CONFIG.SUPABASE_URL}${CONFIG.EDGE_FUNCTIONS[functionName]}`;
+        let url = `${CONFIG.SUPABASE_URL}${CONFIG.EDGE_FUNCTIONS[functionName]}`;
+        if (method === 'GET' && data) {
+            url += '?' + new URLSearchParams(data).toString();
+        }
         const headers = {
             'Content-Type': 'application/json',
             'apikey': CONFIG.SUPABASE_ANON_KEY,
@@ -912,6 +915,22 @@
     function showMainApp() {
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('mainApp').classList.add('active');
+        fetchWeatherForDisplay();
+    }
+
+    // 投稿画面の天気をOpenWeather（Edge Function）経由で取得して表示
+    async function fetchWeatherForDisplay() {
+        try {
+            const pos = await getCurrentPosition();
+            const { latitude: lat, longitude: lon } = pos.coords;
+            const result = await callEdgeFunction('GET_WEATHER', { lat, lon }, 'GET');
+            if (!result.success) return;
+            document.getElementById('weatherIconWrap').innerHTML = getWeatherSVG(result.weather);
+            document.getElementById('weatherDisplay').textContent =
+                `${result.temperature}℃　湿度 ${result.humidity}%`;
+        } catch (e) {
+            // 位置情報が取れない場合はデフォルト表示のまま
+        }
     }
 
     async function handleLogin() {

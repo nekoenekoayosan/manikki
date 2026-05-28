@@ -12,7 +12,8 @@ const CONFIG = {
     EDGE_FUNCTIONS: {
         AUTH: '/functions/v1/auth',
         CREATE_ENTRY: '/functions/v1/create-entry',
-        GET_ENTRIES: '/functions/v1/get-entries'
+        GET_ENTRIES: '/functions/v1/get-entries',
+        GET_WEATHER: '/functions/v1/get-weather',
     },
 
     // 環境設定

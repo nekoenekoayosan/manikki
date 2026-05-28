@@ -15,6 +15,7 @@ interface CreateEntryRequest {
 interface WeatherData {
   weather: string
   temperature: number
+  humidity: number
 }
 
 serve(async (req: Request) => {
@@ -58,8 +59,9 @@ serve(async (req: Request) => {
         
         if (weatherResponse.ok) {
           weatherData = {
-            weather: weatherJson.weather[0].main.toLowerCase(), // "clear", "clouds", "rain" etc
-            temperature: Math.round(weatherJson.main.temp)
+            weather: weatherJson.weather[0].main.toLowerCase(),
+            temperature: Math.round(weatherJson.main.temp),
+            humidity: weatherJson.main.humidity,
           }
         }
       } catch (error) {
@@ -85,6 +87,7 @@ serve(async (req: Request) => {
       category: requestData.category || null,
       weather: weatherData?.weather || null,
       temperature: weatherData?.temperature || null,
+      humidity: weatherData?.humidity || null,
     }
 
     const { data: entry, error: insertError } = await supabase

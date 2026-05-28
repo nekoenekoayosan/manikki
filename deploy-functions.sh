@@ -19,6 +19,9 @@ supabase functions deploy create-entry
 echo "📋 一覧取得 Edge Function をデプロイ中..."
 supabase functions deploy get-entries
 
+echo "🌤 天気取得 Edge Function をデプロイ中..."
+supabase functions deploy get-weather
+
 echo "✅ デプロイ完了！"
 echo ""
 echo "📌 次に必要なこと:"
