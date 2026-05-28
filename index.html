@@ -767,12 +767,21 @@
             }
 
             /* 各画面のPC向けパディング */
-            .screen { padding: 32px 40px; }
+            .screen { padding: 40px 48px; }
             #statsScreen { padding: 0; }
 
-            /* 投稿フォームはPC版でも読みやすい幅に */
-            .post-form, .weather-row { max-width: 560px; }
-            .weather-row { margin-left: 0; }
+            /* 投稿・一覧画面は中央に集約して視線を誘導 */
+            #postScreen, #listScreen {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 40px 0;
+            }
+
+            /* フォームはPC版で幅いっぱい使う（天気行だけ320pxのまま中央） */
+            .post-form { max-width: 100%; }
+
+            /* 振り返り画面のセクションは全幅 */
+            #statsScreen .review-section { padding: 20px 40px 16px; }
         }
     </style>
 </head>
